@@ -23,8 +23,9 @@ This repository now contains a Maven-based Java 17 scaffold for a Neo4j experime
 2. Run the sample application:
    `mvn exec:java -Dexec.mainClass=com.thomasandersfourjava.neo4j.Neo4jExperimentApp`
 3. If you want to override the connection settings, pass Java system properties:
-   `mvn exec:java -Dexec.mainClass=com.thomasandersfourjava.neo4j.Neo4jExperimentApp -Dneo4j.uri=bolt://localhost:7687 -Dneo4j.user=neo4j -Dneo4j.password=neo4j`
+   `mvn exec:java -Dexec.mainClass=com.thomasandersfourjava.neo4j.Neo4jExperimentApp -Dneo4j.uri=bolt://localhost:7687 -Dneo4j.user=neo4j -Dneo4j.password=neo4jpassword`
 
 ### Notes
-- The default credentials are `neo4j/neo4j`.
+- The default credentials are `neo4j/neo4jpassword`.
 - The application will print a simple Neo4j query result once the database is reachable.
+
