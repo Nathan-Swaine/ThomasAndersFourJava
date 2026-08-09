@@ -13,5 +13,14 @@ services:
     volumes:
       - neo4j-data:/data
 
+  mongodb:
+    image: mongo:7.0
+    container_name: thomas-anders-four-java-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
 volumes:
   neo4j-data:
+  mongo-data:
