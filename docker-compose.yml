@@ -14,8 +14,8 @@ services:
       NEO4J_dbms_memory_heap_max__size: 512M
     volumes:
       - neo4j-data:/data
-      # host import directory used by Neo4j LOAD CSV (file:///...)
-      - ./neo4j/import:/var/lib/neo4j/import
+      # host import directory used by Neo4j LOAD CSV (file:///seed/...)
+      - ./neo4j/import:/var/lib/neo4j/import/seed:ro
 
   # init sidecar: waits for Neo4j to be available then runs any .cypher files in the import directory
   neo4j-init:

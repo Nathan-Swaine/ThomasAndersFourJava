@@ -53,3 +53,6 @@ This repository now contains a Maven-based Java 17 scaffold for a Neo4j experime
 - If you move the Java app into a container in the same Docker Compose network, use the service name `mongodb` (or `neo4j`) as the host in the connection URI (e.g., `mongodb://mongodb:27017`).
 - If a connection fails: check `docker ps` and `docker logs <container>` for error details, and ensure the host firewall isn't blocking ports.
 - The importer uses document `_id` as `mongoId` on the Neo4j node and the document's `message` field is stored as `s.message`.
+- Neo4j CSV files are mounted to `/var/lib/neo4j/import/seed`, so `LOAD CSV` paths should use `file:///seed/...`.
+- If WSL Git reports `Permission denied` for `neo4j/import`, reset ownership/mode from WSL:
+  `sudo chown -R $(id -u):$(id -g) neo4j/import && sudo chmod -R u+rwX,go+rX neo4j/import`
