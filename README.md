@@ -5,6 +5,7 @@ This is a project file where I am experimenting with Neo4j. I also wanted a litt
 ## Technologies
 - Docker: 4.8
 - Neo4j: 5.6
+- Gaffer:
 - OpenJDK: 17
 - WSL: 2.7
 
@@ -39,6 +40,9 @@ This repository now contains a Maven-based Java 17 scaffold for a Neo4j experime
 - Open the Neo4j Browser at http://localhost:7474 (use credentials `neo4j/neo4jpassword`), then run:
   MATCH (s:Sample) RETURN s LIMIT 25
 
+- For the Docker seed utility (`neo4j-init` + `wait-and-import.sh`), run:
+  MATCH (n) RETURN count(n) AS remaining
+
 - Or inspect the `sample` collection in Mongo with mongosh:
   mongosh --host localhost --port 27017
   use test
@@ -49,4 +53,3 @@ This repository now contains a Maven-based Java 17 scaffold for a Neo4j experime
 - If you move the Java app into a container in the same Docker Compose network, use the service name `mongodb` (or `neo4j`) as the host in the connection URI (e.g., `mongodb://mongodb:27017`).
 - If a connection fails: check `docker ps` and `docker logs <container>` for error details, and ensure the host firewall isn't blocking ports.
 - The importer uses document `_id` as `mongoId` on the Neo4j node and the document's `message` field is stored as `s.message`.
-
