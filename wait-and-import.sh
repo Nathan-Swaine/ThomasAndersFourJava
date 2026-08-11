@@ -6,10 +6,12 @@ set -eu
 
 NEO4J_URI=${NEO4J_URI:-bolt://neo4j:7687}
 AUTH=${NEO4J_AUTH:-neo4j/neo4jpassword}
-# Split AUTH into user and pass (format: user/password)
-USER=$(printf "%s" "$AUTH" | awk -F/ '{print $1}')
-PASS=$(printf "%s" "$AUTH" | awk -F/ '{print $2}')
-
+USER=${AUTH%%/*}
+PASS=${AUTH#*/}
+if [ "$USER" = "$AUTH" ] || [ -z "$USER" ] || [ -z "$PASS" ]; then
+  echo "Error: NEO4J_AUTH must be in the form user/password"
+  exit 1
+fi
 IMPORT_DIR=${IMPORT_DIR:-/import/data}
 
 # Fail fast if cypher-shell is not available
