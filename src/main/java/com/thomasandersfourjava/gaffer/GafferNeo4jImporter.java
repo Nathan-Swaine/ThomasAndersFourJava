@@ -39,8 +39,8 @@ public class GafferNeo4jImporter implements AutoCloseable {
         try (GafferNeo4jImporter importer = new GafferNeo4jImporter(uri, user, password)) {
             importer.importGafferGraph(gafferJsonPath);
         } catch (Exception e) {
-            System.err.println("Import failed: " + e.getMessage());
-            e.printStackTrace();
+            throw new IllegalStateException("Import failed", e);
+        }
         } finally {
             long elapsedMillis = (System.nanoTime() - startTime) / 1_000_000;
             System.out.println("Importer finished in " + elapsedMillis + " ms");
@@ -101,13 +101,7 @@ public class GafferNeo4jImporter implements AutoCloseable {
         cypher.append(label).append("` {id: $vertex})");
 
         if (entity.getProperties() != null && !entity.getProperties().isEmpty()) {
-            cypher.append(" SET ");
-            boolean first = true;
-            for (String key : entity.getProperties().keySet()) {
-                if (!first) cypher.append(", ");
-                cypher.append("n.").append(key).append(" = $properties.").append(key);
-                first = false;
-            }
+            cypher.append(" SET n += $properties");
         }
 
         return cypher.toString();
