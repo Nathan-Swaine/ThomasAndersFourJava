@@ -14,10 +14,10 @@ else
     exit 1
 fi
 
-if [ -f "neo4j/import/matrix_characters.json" ]; then
-    echo "✓ Gaffer JSON found"
+if [ -f "matrix_characters.csv" ]; then
+    echo "✓ Gaffer source CSV found"
 else
-    echo "✗ Gaffer JSON not found"
+    echo "✗ Gaffer source CSV not found"
     exit 1
 fi
 

@@ -139,9 +139,14 @@ public class GafferJsonConverter {
                 if (inQuotes && i + 1 < line.length() && line.charAt(i + 1) == '"') {
                     currentField.append('"');
                     i++;
+                } else if (inQuotes) {
+                    inQuotes = false;
+                } else if (currentField.length() == 0) {
+                    inQuotes = true;
                 } else {
-                    inQuotes = !inQuotes;
+                    currentField.append(c);
                 }
+            }
             } else if (c == ',' && !inQuotes) {
                 record.put(headers[fieldIndex], currentField.toString().trim());
                 currentField = new StringBuilder();
