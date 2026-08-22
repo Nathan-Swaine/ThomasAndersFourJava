@@ -65,6 +65,8 @@ The Gaffer JSON format is simple and extensible:
 }
 ```
 
+The importer also accepts a nested `graph` wrapper with the same `entities`/`edges` shape, which makes it easy to load a `graph.json` file directly.
+
 **Key Points:**
 - `group`: The entity/edge type (becomes Neo4j label or relationship type)
 - `vertex`: Unique identifier for entities
