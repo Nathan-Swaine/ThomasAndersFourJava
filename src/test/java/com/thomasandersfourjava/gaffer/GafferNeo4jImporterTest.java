@@ -95,6 +95,20 @@ class GafferNeo4jImporterTest {
         assertFalse(shardContent.contains("\"Alice\""));
     }
 
+    @Test
+    void parseCsvLineTreatsMidFieldQuotesAsLiteralCharacters() throws Exception {
+        try (GafferNeo4jImporter importer = new GafferNeo4jImporter(noOpDriver(), 10, false)) {
+            Method method = GafferNeo4jImporter.class.getDeclaredMethod("parseCsvLine", String.class);
+            method.setAccessible(true);
+
+            @SuppressWarnings("unchecked")
+            var row = (java.util.Map<String, String>) method.invoke(
+                    importer, "Neo,Keanu Reeves,1964,The Matrix,1999,Neo is \"The One\"");
+
+            assertEquals("Neo is \"The One\"", row.get("role_notes"));
+        }
+    }
+
     private static void invokeChunkedImport(GafferNeo4jImporter importer, Path source, int convertLimit, Path progress)
             throws Exception {
         Method method = GafferNeo4jImporter.class.getDeclaredMethod(

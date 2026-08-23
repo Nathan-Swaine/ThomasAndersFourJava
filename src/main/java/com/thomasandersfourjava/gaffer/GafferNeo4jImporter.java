@@ -635,8 +635,12 @@ public class GafferNeo4jImporter implements AutoCloseable {
                 if (inQuotes && i + 1 < line.length() && line.charAt(i + 1) == '"') {
                     currentField.append('"');
                     i++;
+                } else if (inQuotes) {
+                    inQuotes = false;
+                } else if (currentField.length() == 0) {
+                    inQuotes = true;
                 } else {
-                    inQuotes = !inQuotes;
+                    currentField.append(c);
                 }
             } else if (c == ',' && !inQuotes) {
                 record.put(headers[fieldIndex], currentField.toString().trim());
@@ -1070,8 +1074,6 @@ public class GafferNeo4jImporter implements AutoCloseable {
                     copyNodeObjectsFromJsonObject(parser, gen);
                 } else if (rootToken == JsonToken.START_ARRAY) {
                     copyNodeObjectsFromJsonArray(parser, gen);
-                } else {
-                    return;
                 }
             }
             gen.writeEndArray();
