@@ -938,6 +938,10 @@ public class GafferNeo4jImporter implements AutoCloseable {
         boolean shardExists = Files.exists(Paths.get(shardPath));
 
         ChunkProgressState state = loadChunkProgress(sourcePath, progressFile);
+        if (state.requiresShardRefresh()) {
+            deleteShard(shardPath);
+            shardExists = false;
+        }
         if (state.isDone()) {
             System.out.println("Chunked JSON import already complete for " + sourcePath);
             return;
@@ -1296,12 +1300,19 @@ public class GafferNeo4jImporter implements AutoCloseable {
         /** Byte offset into the shard file's nodes array where the next unimported node starts. 0 = beginning. */
         private final long shardNodesByteOffset;
         private final String stage;
+        private final boolean shardRefreshRequired;
 
-        private ChunkProgressState(String fingerprint, int totalNodesImported, long shardNodesByteOffset, String stage) {
+        private ChunkProgressState(
+                String fingerprint,
+                int totalNodesImported,
+                long shardNodesByteOffset,
+                String stage,
+                boolean shardRefreshRequired) {
             this.fingerprint = fingerprint;
             this.totalNodesImported = totalNodesImported;
             this.shardNodesByteOffset = shardNodesByteOffset;
             this.stage = stage;
+            this.shardRefreshRequired = shardRefreshRequired;
         }
 
         private boolean isEdgePhase() {
@@ -1312,16 +1323,21 @@ public class GafferNeo4jImporter implements AutoCloseable {
             return "done".equals(stage);
         }
 
+        private boolean requiresShardRefresh() {
+            return shardRefreshRequired;
+        }
+
         private ChunkProgressState advanceNodes(int addedNodes, long newByteOffset) {
-            return new ChunkProgressState(fingerprint, totalNodesImported + addedNodes, newByteOffset, DEFAULT_PROGRESS_STAGE);
+            return new ChunkProgressState(
+                    fingerprint, totalNodesImported + addedNodes, newByteOffset, DEFAULT_PROGRESS_STAGE, false);
         }
 
         private ChunkProgressState advanceToEdges() {
-            return new ChunkProgressState(fingerprint, totalNodesImported, 0, "edges");
+            return new ChunkProgressState(fingerprint, totalNodesImported, 0, "edges", false);
         }
 
         private ChunkProgressState complete() {
-            return new ChunkProgressState(fingerprint, totalNodesImported, 0, "done");
+            return new ChunkProgressState(fingerprint, totalNodesImported, 0, "done", false);
         }
     }
 
@@ -1330,7 +1346,7 @@ public class GafferNeo4jImporter implements AutoCloseable {
         String currentFingerprint = fileFingerprint(source);
         Path progressPath = Paths.get(progressFile);
         if (!Files.exists(progressPath)) {
-            return new ChunkProgressState(currentFingerprint, 0, 0, DEFAULT_PROGRESS_STAGE);
+            return new ChunkProgressState(currentFingerprint, 0, 0, DEFAULT_PROGRESS_STAGE, false);
         }
 
         Properties stateProperties = new Properties();
@@ -1340,13 +1356,13 @@ public class GafferNeo4jImporter implements AutoCloseable {
 
         String storedFingerprint = stateProperties.getProperty("fingerprint");
         if (!currentFingerprint.equals(storedFingerprint)) {
-            return new ChunkProgressState(currentFingerprint, 0, 0, DEFAULT_PROGRESS_STAGE);
+            return new ChunkProgressState(currentFingerprint, 0, 0, DEFAULT_PROGRESS_STAGE, true);
         }
 
         int totalNodesImported = parseProgressOffset(stateProperties.getProperty("totalNodesImported", "0"));
         long shardNodesByteOffset = parseProgressLong(stateProperties.getProperty("shardNodesByteOffset", "0"));
         String stage = stateProperties.getProperty("stage", DEFAULT_PROGRESS_STAGE);
-        return new ChunkProgressState(currentFingerprint, totalNodesImported, shardNodesByteOffset, stage);
+        return new ChunkProgressState(currentFingerprint, totalNodesImported, shardNodesByteOffset, stage, false);
     }
 
     private static void saveChunkProgress(String progressFile, ChunkProgressState state) throws IOException {
