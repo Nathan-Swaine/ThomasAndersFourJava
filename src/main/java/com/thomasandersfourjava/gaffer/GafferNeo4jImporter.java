@@ -60,9 +60,9 @@ public class GafferNeo4jImporter implements AutoCloseable {
 
     private static Config buildDriverConfig() {
         return Config.builder()
-                .withMaxConnectionPoolSize(1)
-                .withConnectionAcquisitionTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-                .withMaxConnectionLifetime(30, java.util.concurrent.TimeUnit.SECONDS)
+                .withMaxConnectionPoolSize(4)
+                .withConnectionAcquisitionTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+                .withMaxConnectionLifetime(5, java.util.concurrent.TimeUnit.MINUTES)
                 .build();
     }
 
@@ -240,6 +240,7 @@ public class GafferNeo4jImporter implements AutoCloseable {
     }
 
     private void importEdges(List<GafferEdge> edges) {
+        ensureGlobalIdIndex();
         List<GafferEdge> batch = new ArrayList<>();
 
         for (GafferEdge edge : edges) {
@@ -253,6 +254,41 @@ public class GafferNeo4jImporter implements AutoCloseable {
         if (!batch.isEmpty()) {
             importEdgeBatch(batch);
         }
+    }
+
+    /**
+     * Ensures Neo4j can efficiently look up nodes by id during edge import.
+     * The per-label unique constraints (created during node import) each back a range index.
+     * Neo4j 5 uses a union index scan across those indexes for label-free MATCH (n {id: x}).
+     * If constraints were created in a prior run (persisted in DB), this session's
+     * preparedEntityLabels cache is empty, so we warm it up by querying existing constraints.
+     */
+    private void ensureGlobalIdIndex() {
+        if (!preparedEntityLabels.isEmpty()) {
+            return; // Already warmed from this session's node import phase.
+        }
+        // Query the DB for all labels that already have a unique constraint on `id`
+        // so Neo4j can use their backing indexes for the label-free MATCH in buildEdgeBatchCypher.
+        // This is a read-only operation — the indexes already exist from the node import.
+        try (Session session = driver.session()) {
+            session.executeRead(tx -> {
+                var result = tx.run(
+                        "SHOW CONSTRAINTS YIELD labelsOrTypes, properties " +
+                        "WHERE properties = ['id'] RETURN labelsOrTypes");
+                while (result.hasNext()) {
+                    var record = result.next();
+                    var labels = record.get("labelsOrTypes").asList();
+                    for (var label : labels) {
+                        preparedEntityLabels.add(String.valueOf(label));
+                    }
+                }
+                return null;
+            });
+        } catch (Exception e) {
+            System.err.println("Warning: could not warm label cache for edge import: " + e.getMessage());
+        }
+        System.out.println("Edge import: found " + preparedEntityLabels.size()
+                + " indexed label(s) available for id lookups.");
     }
 
     private void importEdgeBatch(List<GafferEdge> batch) {
@@ -277,8 +313,26 @@ public class GafferNeo4jImporter implements AutoCloseable {
     }
 
     private String buildEdgeBatchCypher(String relationshipType) {
-        return "UNWIND $rows AS row MATCH (a {id: row.source}) MATCH (b {id: row.destination}) "
-                + "MERGE (a)-[r:" + quoteIdentifier(relationshipType) + "]->(b) SET r += row.properties";
+        String labelClause = buildNodeLookupLabel();
+        return "UNWIND $rows AS row "
+                + "MATCH (a" + labelClause + " {id: row.source}) "
+                + "MATCH (b" + labelClause + " {id: row.destination}) "
+                + "CREATE (a)-[r:" + quoteIdentifier(relationshipType) + "]->(b) SET r += row.properties";
+    }
+
+    /**
+     * Returns a Cypher label clause (e.g. ":Entity") for node lookups in edge import.
+     * Uses the labels known to have a backing index on `id` (populated by ensureGlobalIdIndex).
+     * With a label, Neo4j uses a NodeUniqueIndexSeek instead of a full AllNodesScan.
+     * If multiple indexed labels exist, picks the first one; the MERGE at node import time
+     * guarantees each node's primary label is one of these.
+     * Falls back to no label if the set is empty (safe but slow — avoids a hard failure).
+     */
+    private String buildNodeLookupLabel() {
+        if (preparedEntityLabels.isEmpty()) {
+            return "";
+        }
+        return ":" + quoteIdentifier(preparedEntityLabels.iterator().next());
     }
 
     private String resolveEntityLabel(GafferEntity entity) {
@@ -398,7 +452,8 @@ public class GafferNeo4jImporter implements AutoCloseable {
             int convertOffset,
             int convertLimit,
             ImportMode importMode) throws IOException {
-        if (importMode == ImportMode.EDGES_ONLY) {
+        if (importMode == ImportMode.EDGES_ONLY && valueToken != JsonToken.START_ARRAY) {
+            // For a single-object entity section there is nothing edge-like to rescue; skip it.
             parser.skipChildren();
             return;
         }
@@ -425,9 +480,20 @@ public class GafferNeo4jImporter implements AutoCloseable {
                 Map<String, Object> map = parser.readValueAs(MAP_TYPE);
                 GafferEntity entity = toEntity(map);
                 if (entity != null) {
-                    accumulator.addEntity(entity);
+                    if (importMode != ImportMode.EDGES_ONLY) {
+                        accumulator.addEntity(entity);
+                    }
+                    accumulator.entitiesSeen++;
+                } else if (importMode != ImportMode.ENTITIES_ONLY && containsEdgeLikeMetadata(map)) {
+                    // Mixed array: item has no node id but looks like an edge (source/target present).
+                    GafferEdge edge = toEdge(map);
+                    if (edge != null) {
+                        accumulator.addEdge(edge);
+                    }
+                    accumulator.edgesSeen++;
+                } else {
+                    accumulator.entitiesSeen++;
                 }
-                accumulator.entitiesSeen++;
             }
             return;
         }
@@ -437,7 +503,16 @@ public class GafferNeo4jImporter implements AutoCloseable {
             Map<String, Object> map = parser.readValueAs(MAP_TYPE);
             GafferEntity entity = toEntity(map);
             if (entity != null) {
-                accumulator.addEntity(entity);
+                if (importMode != ImportMode.EDGES_ONLY) {
+                    accumulator.addEntity(entity);
+                }
+            } else if (importMode != ImportMode.ENTITIES_ONLY && containsEdgeLikeMetadata(map)) {
+                GafferEdge edge = toEdge(map);
+                if (edge != null) {
+                    accumulator.addEdge(edge);
+                }
+                accumulator.edgesSeen++;
+                return;
             }
             accumulator.entitiesSeen++;
             return;

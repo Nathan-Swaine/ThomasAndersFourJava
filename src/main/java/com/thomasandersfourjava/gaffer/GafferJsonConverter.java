@@ -534,9 +534,8 @@ public class GafferJsonConverter {
                 } else if (currentField.length() == 0) {
                     inQuotes = true;
                 } else {
-                    currentField.append(c);
+                    currentField.append(c);
                 }
-            }
             } else if (c == ',' && !inQuotes) {
                 record.put(headers[fieldIndex], currentField.toString().trim());
                 currentField = new StringBuilder();
