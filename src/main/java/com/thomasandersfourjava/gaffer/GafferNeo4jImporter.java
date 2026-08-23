@@ -106,17 +106,12 @@ public class GafferNeo4jImporter implements AutoCloseable {
                 importer.importFromPath(sourcePath, convertOffset, convertLimit, importMode);
             }
         } catch (Exception e) {
-<<<<<<< Updated upstream
-            throw new IllegalStateException("Import failed", e);
-        }
-=======
             System.err.println("Import failed: " + e.getMessage());
             e.printStackTrace();
             if (e instanceof IOException ioException) {
                 throw ioException;
             }
             throw new IllegalStateException("Import failed for source: " + sourcePath, e);
->>>>>>> Stashed changes
         } finally {
             long elapsedMillis = (System.nanoTime() - startTime) / 1_000_000;
             System.out.println("Importer finished in " + formatDuration(elapsedMillis));
@@ -197,10 +192,6 @@ public class GafferNeo4jImporter implements AutoCloseable {
             return;
         }
 
-<<<<<<< Updated upstream
-        if (entity.getProperties() != null && !entity.getProperties().isEmpty()) {
-            cypher.append(" SET n += $properties");
-=======
         String constraintName = buildEntityIdConstraintName(resolvedLabel);
         String cypher = "CREATE CONSTRAINT " + quoteIdentifier(constraintName)
                 + " IF NOT EXISTS FOR (n:" + quoteIdentifier(resolvedLabel) + ") REQUIRE n.id IS UNIQUE";
@@ -226,7 +217,6 @@ public class GafferNeo4jImporter implements AutoCloseable {
                 normalized.append('_');
                 previousWasUnderscore = true;
             }
->>>>>>> Stashed changes
         }
 
         int start = 0;
