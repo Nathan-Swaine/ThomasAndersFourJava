@@ -90,10 +90,12 @@ class GafferJsonConverterTest {
 
         List<GafferGraph> batches = GafferJsonConverter.convertJsonGraphToBatches(tempFile.toString(), 10);
 
-        assertEquals(1, batches.size());
+        assertEquals(2, batches.size());
         assertEquals(2, batches.get(0).getEntities().size());
-        assertEquals(1, batches.get(0).getEdges().size());
-        assertEquals("Alice", batches.get(0).getEdges().get(0).getSource());
-        assertEquals("Bob", batches.get(0).getEdges().get(0).getDestination());
+        assertTrue(batches.get(0).getEdges().isEmpty());
+        assertTrue(batches.get(1).getEntities().isEmpty());
+        assertEquals(1, batches.get(1).getEdges().size());
+        assertEquals("Alice", batches.get(1).getEdges().get(0).getSource());
+        assertEquals("Bob", batches.get(1).getEdges().get(0).getDestination());
     }
 }
