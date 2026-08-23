@@ -110,7 +110,7 @@ NEO4J_USER=neo4j
 NEO4J_PASSWORD=neo4jpassword
 GAFFER_BATCH_SIZE=100
 GAFFER_CONVERT_LIMIT=1000
-IMPORT_DIR=/data/out
+IMPORT_DIR=/data
 ```
 
 For local host Java fallback values, use `src/main/resources/application.properties`:
