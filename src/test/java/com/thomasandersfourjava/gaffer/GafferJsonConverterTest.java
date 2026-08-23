@@ -26,12 +26,17 @@ class GafferJsonConverterTest {
 
         List<GafferGraph> batches = GafferJsonConverter.convertGenericGraphToBatches(nodes, edges, 1);
 
-        assertEquals(3, batches.size());
+        assertEquals(5, batches.size());
         assertEquals("Person", batches.get(0).getEntities().get(0).getGroup());
         assertEquals("Alice", batches.get(0).getEntities().get(0).getVertex());
-        assertEquals("KNOWS", batches.get(0).getEdges().get(0).getGroup());
-        assertEquals("Alice", batches.get(0).getEdges().get(0).getSource());
-        assertEquals("Bob", batches.get(0).getEdges().get(0).getDestination());
+        assertTrue(batches.get(0).getEdges().isEmpty());
+        assertEquals("Person", batches.get(2).getEntities().get(0).getGroup());
+        assertEquals("Charlie", batches.get(2).getEntities().get(0).getVertex());
+        assertTrue(batches.get(2).getEdges().isEmpty());
+        assertTrue(batches.get(3).getEntities().isEmpty());
+        assertEquals("KNOWS", batches.get(3).getEdges().get(0).getGroup());
+        assertEquals("Alice", batches.get(3).getEdges().get(0).getSource());
+        assertEquals("Bob", batches.get(3).getEdges().get(0).getDestination());
     }
 
     @Test

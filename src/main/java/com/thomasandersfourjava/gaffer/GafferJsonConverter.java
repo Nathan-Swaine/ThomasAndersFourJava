@@ -318,16 +318,8 @@ public class GafferJsonConverter {
         List<Map<String, Object>> normalizedEdges = edges == null ? new ArrayList<>() : new ArrayList<>(edges);
         int effectiveBatchSize = batchSize > 0 ? batchSize : DEFAULT_BATCH_SIZE;
 
-        int nodeCount = normalizedNodes.size();
-        int edgeCount = normalizedEdges.size();
-        int totalBatches = Math.max((nodeCount + effectiveBatchSize - 1) / effectiveBatchSize,
-                (edgeCount + effectiveBatchSize - 1) / effectiveBatchSize);
-
         List<GafferGraph> batches = new ArrayList<>();
-        for (int i = 0; i < totalBatches; i++) {
-            int nodeStart = i * effectiveBatchSize;
-            int edgeStart = i * effectiveBatchSize;
-
+        for (int nodeStart = 0; nodeStart < normalizedNodes.size(); nodeStart += effectiveBatchSize) {
             List<GafferEntity> entities = new ArrayList<>();
             for (int j = nodeStart; j < normalizedNodes.size() && j < nodeStart + effectiveBatchSize; j++) {
                 GafferEntity entity = toEntity(normalizedNodes.get(j));
@@ -336,6 +328,12 @@ public class GafferJsonConverter {
                 }
             }
 
+            if (!entities.isEmpty()) {
+                batches.add(new GafferGraph(entities, new ArrayList<>()));
+            }
+        }
+
+        for (int edgeStart = 0; edgeStart < normalizedEdges.size(); edgeStart += effectiveBatchSize) {
             List<GafferEdge> entityEdges = new ArrayList<>();
             for (int j = edgeStart; j < normalizedEdges.size() && j < edgeStart + effectiveBatchSize; j++) {
                 GafferEdge edge = toEdge(normalizedEdges.get(j));
@@ -344,11 +342,9 @@ public class GafferJsonConverter {
                 }
             }
 
-            if (entities.isEmpty() && entityEdges.isEmpty()) {
-                continue;
+            if (!entityEdges.isEmpty()) {
+                batches.add(new GafferGraph(new ArrayList<>(), entityEdges));
             }
-
-            batches.add(new GafferGraph(entities, entityEdges));
         }
 
         return batches;
