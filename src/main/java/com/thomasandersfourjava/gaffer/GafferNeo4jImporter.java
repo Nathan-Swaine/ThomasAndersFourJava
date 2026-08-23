@@ -1051,8 +1051,14 @@ public class GafferNeo4jImporter implements AutoCloseable {
             gen.writeStartArray();
             try (InputStream input = Files.newInputStream(Paths.get(sourcePath));
                  JsonParser parser = mapper.getFactory().createParser(input)) {
-                if (parser.nextToken() != JsonToken.START_OBJECT) return;
-                copyNodeObjectsFromJsonObject(parser, gen);
+                JsonToken rootToken = parser.nextToken();
+                if (rootToken == JsonToken.START_OBJECT) {
+                    copyNodeObjectsFromJsonObject(parser, gen);
+                } else if (rootToken == JsonToken.START_ARRAY) {
+                    copyNodeObjectsFromJsonArray(parser, gen);
+                } else {
+                    return;
+                }
             }
             gen.writeEndArray();
         }
@@ -1080,6 +1086,20 @@ public class GafferNeo4jImporter implements AutoCloseable {
             }
 
             parser.skipChildren();
+        }
+    }
+
+    private void copyNodeObjectsFromJsonArray(JsonParser parser, JsonGenerator gen) throws IOException {
+        while (parser.nextToken() != JsonToken.END_ARRAY) {
+            if (parser.currentToken() != JsonToken.START_OBJECT) {
+                parser.skipChildren();
+                continue;
+            }
+
+            Map<String, Object> map = parser.readValueAs(MAP_TYPE);
+            if (containsNodeLikeMetadata(map)) {
+                gen.writeObject(map);
+            }
         }
     }
 
