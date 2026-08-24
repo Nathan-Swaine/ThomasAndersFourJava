@@ -67,7 +67,7 @@ fi
 
 file_fingerprint() {
   target_file="$1"
-  stat -c '%s:%Y' "$target_file"
+  sha256sum "$target_file" | awk '{print $1}'
 }
 
 should_import_file() {
