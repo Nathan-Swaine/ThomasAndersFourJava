@@ -28,7 +28,7 @@ public class GafferJsonConverter {
         int configuredConvertLimit = resolveConvertLimit(properties);
 
         if (args.length == 0) {
-            runCsvConversion("matrix_characters.csv", "neo4j/import/matrix_characters.json", configuredConvertLimit);
+            runCsvConversion("social_media_usage.csv", "neo4j/import/social_media_usage.json", configuredConvertLimit);
             return;
         }
 
