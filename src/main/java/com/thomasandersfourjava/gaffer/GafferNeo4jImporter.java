@@ -318,26 +318,10 @@ public class GafferNeo4jImporter implements AutoCloseable {
     }
 
     private String buildEdgeBatchCypher(String relationshipType) {
-        String labelClause = buildNodeLookupLabel();
         return "UNWIND $rows AS row "
-                + "MATCH (a" + labelClause + " {id: row.source}) "
-                + "MATCH (b" + labelClause + " {id: row.destination}) "
-                + "CREATE (a)-[r:" + quoteIdentifier(relationshipType) + "]->(b) SET r += row.properties";
-    }
-
-    /**
-     * Returns a Cypher label clause (e.g. ":Entity") for node lookups in edge import.
-     * Uses the labels known to have a backing index on `id` (populated by ensureGlobalIdIndex).
-     * With a label, Neo4j uses a NodeUniqueIndexSeek instead of a full AllNodesScan.
-     * If multiple indexed labels exist, picks the first one; the MERGE at node import time
-     * guarantees each node's primary label is one of these.
-     * Falls back to no label if the set is empty (safe but slow — avoids a hard failure).
-     */
-    private String buildNodeLookupLabel() {
-        if (preparedEntityLabels.isEmpty()) {
-            return "";
-        }
-        return ":" + quoteIdentifier(preparedEntityLabels.iterator().next());
+                + "MATCH (a {id: row.source}) "
+                + "MATCH (b {id: row.destination}) "
+                + "MERGE (a)-[r:" + quoteIdentifier(relationshipType) + "]->(b) SET r += row.properties";
     }
 
     private String resolveEntityLabel(GafferEntity entity) {
