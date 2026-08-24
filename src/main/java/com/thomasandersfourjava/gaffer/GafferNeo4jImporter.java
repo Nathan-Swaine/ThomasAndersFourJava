@@ -24,6 +24,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import org.neo4j.driver.AuthTokens;
@@ -53,7 +54,11 @@ public class GafferNeo4jImporter implements AutoCloseable {
     }
 
     public GafferNeo4jImporter(String uri, String user, String password, int batchSize, boolean inlineProgressEnabled) {
-        this.driver = GraphDatabase.driver(uri, AuthTokens.basic(user, password), buildDriverConfig());
+        this(GraphDatabase.driver(uri, AuthTokens.basic(user, password), buildDriverConfig()), batchSize, inlineProgressEnabled);
+    }
+
+    GafferNeo4jImporter(Driver driver, int batchSize, boolean inlineProgressEnabled) {
+        this.driver = Objects.requireNonNull(driver, "driver");
         this.batchSize = Math.max(batchSize, 1);
         this.inlineProgressEnabled = inlineProgressEnabled;
     }
@@ -705,8 +710,12 @@ public class GafferNeo4jImporter implements AutoCloseable {
                 if (inQuotes && i + 1 < line.length() && line.charAt(i + 1) == '"') {
                     currentField.append('"');
                     i++;
+                } else if (inQuotes) {
+                    inQuotes = false;
+                } else if (currentField.length() == 0) {
+                    inQuotes = true;
                 } else {
-                    inQuotes = !inQuotes;
+                    currentField.append(c);
                 }
             } else if (c == ',' && !inQuotes) {
                 record.put(headers[fieldIndex], currentField.toString().trim());
@@ -1035,7 +1044,7 @@ public class GafferNeo4jImporter implements AutoCloseable {
         // Seek into the shard at the saved byte offset and import the next chunk.
         ShardImportResult result = importFromShardAtOffset(shardPath, state.shardNodesByteOffset, convertLimit);
 
-        if (result.stats.entitiesImported < convertLimit) {
+        if (result.exhausted()) {
             System.out.println("Final node chunk complete. Total nodes: "
                     + (state.totalNodesImported + result.stats.entitiesImported) + ". Importing relationships.");
             importFromPath(sourcePath, 0, DEFAULT_CONVERT_LIMIT, ImportMode.EDGES_ONLY);
@@ -1050,7 +1059,7 @@ public class GafferNeo4jImporter implements AutoCloseable {
                 state.advanceNodes(Math.toIntExact(result.stats.entitiesImported), result.nextByteOffset));
     }
 
-    private record ShardImportResult(ImportStats stats, long nextByteOffset) {}
+    private record ShardImportResult(ImportStats stats, long nextByteOffset, boolean exhausted) {}
 
     /**
      * Seeks into the shard file at {@code byteOffset}, reads up to {@code limit} node objects,
@@ -1064,6 +1073,7 @@ public class GafferNeo4jImporter implements AutoCloseable {
         StreamBatchAccumulator accumulator = new StreamBatchAccumulator(resolveEntityImportTarget(limit));
         System.out.println("Streaming JSON import from: " + shardPath + " at offset " + byteOffset);
         long endOffset = byteOffset;
+        boolean exhausted = false;
 
         try (FileChannel channel = FileChannel.open(Paths.get(shardPath), StandardOpenOption.READ)) {
             channel.position(byteOffset);
@@ -1089,7 +1099,10 @@ public class GafferNeo4jImporter implements AutoCloseable {
                 parser.nextToken(); // consume '[' (either real or synthetic)
                 JsonToken token;
                 while ((token = parser.nextToken()) != null) {
-                    if (token == JsonToken.END_ARRAY || token == JsonToken.END_OBJECT) break;
+                    if (token == JsonToken.END_ARRAY || token == JsonToken.END_OBJECT) {
+                        exhausted = true;
+                        break;
+                    }
                     if (token != JsonToken.START_OBJECT) { parser.skipChildren(); continue; }
                     if (isOverLimit(accumulator.entitiesSeen, 0, limit)) break;
                     Map<String, Object> map = parser.readValueAs(MAP_TYPE);
@@ -1101,8 +1114,12 @@ public class GafferNeo4jImporter implements AutoCloseable {
                     if (entity != null) accumulator.addEntity(entity);
                     accumulator.entitiesSeen++;
                 }
+                if (token == null) {
+                    exhausted = true;
+                }
             } catch (com.fasterxml.jackson.core.io.JsonEOFException ignored) {
                 // Hit end of stream mid-array — treat as exhausted.
+                exhausted = true;
             }
         }
 
@@ -1111,7 +1128,8 @@ public class GafferNeo4jImporter implements AutoCloseable {
                 + ", Edges: " + accumulator.edgesImported);
         return new ShardImportResult(
                 new ImportStats(accumulator.entitiesImported, accumulator.edgesImported),
-                endOffset);
+                endOffset,
+                exhausted);
     }
 
     /**
@@ -1131,8 +1149,6 @@ public class GafferNeo4jImporter implements AutoCloseable {
                     copyNodeObjectsFromJsonObject(parser, gen);
                 } else if (rootToken == JsonToken.START_ARRAY) {
                     copyNodeObjectsFromJsonArray(parser, gen);
-                } else {
-                    return;
                 }
             }
             gen.writeEndArray();
