@@ -61,6 +61,7 @@ if [ "$RESET_GRAPH" = "true" ]; then
     exit 1
   fi
   : > "$IMPORT_MANIFEST_FILE"
+  find "$IMPORT_STATE_DIR" -name "*.progress.properties" -delete
 else
   echo "Incremental mode enabled (RESET_GRAPH=false): preserving existing graph data."
 fi
