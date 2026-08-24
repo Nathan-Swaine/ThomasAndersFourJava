@@ -85,7 +85,7 @@ bash test-gaffer-integration.sh
 
 ### Tear Down the Stack
 ```bash
-bash teardown-gaffer.sh
+bash teardown.sh
 ```
 
 ## 📁 What's Included
@@ -96,22 +96,24 @@ bash teardown-gaffer.sh
 | `matrix_characters.csv` | Source data for conversion |
 | `Dockerfile` | Container image for the Gaffer pipeline |
 | `run-gaffer-pipeline.sh` | Runs CSV conversion then batch import on container start |
-| `teardown-gaffer.sh` | Tears down the Docker stack and volumes |
+| `teardown.sh` | Tears down the Docker stack and volumes |
 | `docker-compose.yml` | Service definitions |
 | `README.md` | Full documentation |
 | `GAFFER_ARCHITECTURE.md` | Technical deep dive |
 
 ## 🔧 Configuration
 
-Change Neo4j connection in `docker-compose.yml`:
-```yaml
-environment:
-  NEO4J_URI: bolt://neo4j:7687
-  NEO4J_USER: neo4j
-  NEO4J_PASSWORD: neo4jpassword
+For Docker/runtime settings, use `project.env` (single source of truth):
+```env
+NEO4J_URI=bolt://neo4j:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=neo4jpassword
+GAFFER_BATCH_SIZE=100
+GAFFER_CONVERT_LIMIT=1000
+IMPORT_DIR=/data
 ```
 
-Or in `src/main/resources/application.properties`:
+For local host Java fallback values, use `src/main/resources/application.properties`:
 ```properties
 neo4j.uri=bolt://localhost:7687
 neo4j.user=neo4j

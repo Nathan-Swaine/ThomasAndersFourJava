@@ -14,7 +14,7 @@ else
     exit 1
 fi
 
-if [ -f "matrix_characters.csv" ]; then
+if [ -f "social_media_usage.csv" ]; then
     echo "✓ Gaffer source CSV found"
 else
     echo "✗ Gaffer source CSV not found"

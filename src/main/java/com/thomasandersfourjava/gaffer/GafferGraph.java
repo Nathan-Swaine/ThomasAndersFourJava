@@ -36,9 +36,11 @@ public class GafferGraph {
 
     @Override
     public String toString() {
+        int entityCount = entities == null ? 0 : entities.size();
+        int edgeCount = edges == null ? 0 : edges.size();
         return "GafferGraph{" +
-                "entities=" + entities.size() +
-                ", edges=" + edges.size() +
+                "entities=" + entityCount +
+                ", edges=" + edgeCount +
                 '}';
     }
 }
