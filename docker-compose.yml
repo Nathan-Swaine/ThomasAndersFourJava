@@ -2,13 +2,8 @@ services:
   neo4j:
     image: neo4j:5.6
     container_name: thomas-anders-four-java-neo4j
-    environment:
-      NEO4J_AUTH: neo4j/neo4jpassword
-      NEO4J_server_memory_pagecache_size: 4G
-      NEO4J_server_memory_heap_initial__size: 1500m
-      NEO4J_server_memory_heap_max__size: 1500m
-      NEO4J_db_checkpoint_iops_limit: -1
-      NEO4J_db_tx__log_rotation_retention__policy: "1 files"
+    env_file:
+      - ./project.env
     ports:
       - "7474:7474"
       - "7687:7687"
